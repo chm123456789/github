@@ -1,23 +1,24 @@
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const path = require('path')
 const {CleanWebpackPlugin} = require('clean-webpack-plugin');
+const BundleAnalyzerPlugin= require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 const MiniCssExtractPliugin = require('mini-css-extract-plugin');
+const OptimizeCssAssetsPlugin = require('optimize-css-assets-webpack-plugin');
+const TerserPlugin = require('terser-webpack-plugin');
+
 module.exports = function(env,argv) {
     const isEnvDevelopment = argv.mode === 'development' || !argv.mode;
     const isEnvProduction = argv.mode === 'production';
     const webpack =require('webpack');
+    
 
     return{
         mode: isEnvProduction ? 'production' : isEnvDevelopment && 'development',
         devtool: isEnvProduction ? 'source-map' : isEnvDevelopment && 'cheap-module-source-map',
         entry: './src/index.jsx',
     output:{
-        filename:'bundle.js',
+        filename:'[bundle].[contenthash:8].js',
         path:path.resolve(__dirname,'dist')
-    },
-    devServer:{
-        contentBase: './dist',
-        hot:true,
     },
     module:{
         rules:[{
@@ -31,7 +32,7 @@ module.exports = function(env,argv) {
             test: /\.css$/,
             include:[path.resolve(__dirname,'src/styles'),/node_modules/],
             use: [
-              "MiniCssExtractPliugin.loader",
+              "style-loader",
               "css-loader",
               "postcss-loader"
             ]
@@ -39,7 +40,7 @@ module.exports = function(env,argv) {
           {
             test: /\.css$/,
             exclude:[path.resolve(__dirname,'src/styles'),/node_modules/],
-            use:["MiniCssExtractPliugin.loader","css-loader?modules",  "postcss-loader"]
+            use:["style-loader","css-loader?modules",  "postcss-loader"]
           },
           {
             test: /\.less$/,
@@ -77,18 +78,60 @@ module.exports = function(env,argv) {
     ]
         
     },
+ 
+    optimization:
+    {
+      minimize:true,
+      minimizer:
+      [
+       new TerserPlugin(), 
+       new OptimizeCssAssetsPlugin(),
+      ],
+      splitChunks:
+      {
+       chunks:'all',
+       name:true,
+       cacheGroups:{
+         vendors:
+         {
+           test:/[\\/]node_modules[\\/]/,
+           priority:-10
+         },
+         defalut:
+         {
+           minChunks:2,
+           priority:-20,
+           reuseExistingChunk:true
+         }
+       }
+      }
+    },
     plugins: [
-        new HtmlWebpackPlugin({
-             template:"public/index.html"
-            }),
-        new webpack.NamedChunksPlugin(),
-        new webpack.HotModuleReplacementPlugin(),
-        new MiniCssExtractPliugin(
-          {
-            filename:'[name].[contenthash:8].css',
-            chunkFilename:'[name].[contenthash:8].chunk.css'
-          }
-        ),
-        ]
-    };
+      new HtmlWebpackPlugin({
+        title: 'Github热⻔项⽬',
+        favicon: 'public/favicon.png',
+        template: "public/index.html",
+        minify: {
+        removeComments: true,
+        collapseWhitespace: true,
+        removeRedundantAttributes: true,
+        useShortDoctype: true,
+        removeEmptyAttributes: true,
+        removeStyleLinkTypeAttributes: true,
+        keepClosingSlash: true,
+        minifyJS: true,
+        minifyCSS: true,
+        minifyURLs: true,
+          },
+        }),
+      new webpack.NamedChunksPlugin(),
+      new webpack.HotModuleReplacementPlugin(),
+      new MiniCssExtractPliugin(
+        {
+          filename:'[name].[contenthash:8].css',
+          chunkFilename:'[name].[contenthash:8].chunk.css'
+        }
+      ),
+      ]
+  };
 };
